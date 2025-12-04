@@ -1,0 +1,1112 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pluribus - Estrategias de Aprendizado</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%);
+            color: #e0e0e0;
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Header */
+        header {
+            text-align: center;
+            padding: 3rem 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 3rem;
+        }
+
+        h1 {
+            font-size: 3.5rem;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            color: #888;
+        }
+
+        /* Strategy Cards */
+        .strategies {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .strategy-card {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: 2rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .strategy-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+        }
+
+        .strategy-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(255,255,255,0.2);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        }
+
+        .strategy-card.bandit::before {
+            background: linear-gradient(90deg, #f093fb, #f5576c);
+        }
+
+        .strategy-card.single-var::before {
+            background: linear-gradient(90deg, #4facfe, #00f2fe);
+        }
+
+        .strategy-card.explorer::before {
+            background: linear-gradient(90deg, #43e97b, #38f9d7);
+        }
+
+        .strategy-name {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .strategy-subtitle {
+            color: #888;
+            font-size: 0.9rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .strategy-description {
+            margin-bottom: 1.5rem;
+            color: #bbb;
+        }
+
+        /* Visual Demo */
+        .demo-container {
+            background: rgba(0,0,0,0.3);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .demo-title {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #666;
+            margin-bottom: 1rem;
+        }
+
+        /* Bandit Demo */
+        .bandit-demo {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: center;
+        }
+
+        .bandit-bar {
+            width: 30px;
+            background: rgba(240, 147, 251, 0.3);
+            border-radius: 4px;
+            position: relative;
+            height: 80px;
+            display: flex;
+            align-items: flex-end;
+        }
+
+        .bandit-fill {
+            width: 100%;
+            background: linear-gradient(180deg, #f093fb, #f5576c);
+            border-radius: 4px;
+            transition: height 0.5s ease;
+        }
+
+        /* Single Var Demo */
+        .singlevar-demo {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .comparison-row {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+
+        .comparison-label {
+            width: 60px;
+            color: #666;
+        }
+
+        .sequence {
+            display: flex;
+            gap: 4px;
+        }
+
+        .seq-item {
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+
+        .seq-item.correct {
+            background: rgba(67, 233, 123, 0.3);
+            color: #43e97b;
+        }
+
+        .seq-item.wrong {
+            background: rgba(245, 87, 108, 0.3);
+            color: #f5576c;
+        }
+
+        .seq-item.unknown {
+            background: rgba(255,255,255,0.1);
+            color: #888;
+        }
+
+        .seq-item.changed {
+            animation: pulse 1s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .arrow {
+            color: #4facfe;
+            font-size: 1.2rem;
+        }
+
+        .reward-change {
+            padding: 0.3rem 0.6rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+        }
+
+        .reward-up {
+            background: rgba(67, 233, 123, 0.2);
+            color: #43e97b;
+        }
+
+        .reward-down {
+            background: rgba(245, 87, 108, 0.2);
+            color: #f5576c;
+        }
+
+        /* Explorer Demo */
+        .explorer-demo {
+            position: relative;
+            height: 100px;
+        }
+
+        .explorer-line {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: rgba(255,255,255,0.1);
+        }
+
+        .explorer-path {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .explorer-path svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        .explorer-path path {
+            fill: none;
+            stroke: url(#explorerGradient);
+            stroke-width: 3;
+            stroke-linecap: round;
+        }
+
+        .epsilon-indicator {
+            position: absolute;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 0.7rem;
+            color: #43e97b;
+            background: rgba(67, 233, 123, 0.1);
+            padding: 0.3rem 0.5rem;
+            border-radius: 4px;
+        }
+
+        /* Pros/Cons */
+        .pros-cons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .pros, .cons {
+            font-size: 0.85rem;
+        }
+
+        .pros-title, .cons-title {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .pros-title {
+            color: #43e97b;
+        }
+
+        .cons-title {
+            color: #f5576c;
+        }
+
+        .pros ul, .cons ul {
+            list-style: none;
+            color: #999;
+        }
+
+        .pros li::before {
+            content: '+';
+            color: #43e97b;
+            margin-right: 0.5rem;
+        }
+
+        .cons li::before {
+            content: '-';
+            color: #f5576c;
+            margin-right: 0.5rem;
+        }
+
+        /* Comparison Section */
+        .comparison-section {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .comparison-section h2 {
+            font-size: 1.8rem;
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .comparison-table th,
+        .comparison-table td {
+            padding: 1rem;
+            text-align: center;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .comparison-table th {
+            color: #888;
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .comparison-table td {
+            font-size: 0.95rem;
+        }
+
+        .comparison-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .rating {
+            display: flex;
+            justify-content: center;
+            gap: 2px;
+        }
+
+        .rating-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+        }
+
+        .rating-dot.filled {
+            background: #667eea;
+        }
+
+        /* Interactive Demo */
+        .interactive-section {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: 2rem;
+        }
+
+        .interactive-section h2 {
+            font-size: 1.8rem;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        .interactive-description {
+            text-align: center;
+            color: #888;
+            margin-bottom: 2rem;
+        }
+
+        .race-container {
+            background: rgba(0,0,0,0.3);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+
+        .race-bar-container {
+            margin-bottom: 1rem;
+        }
+
+        .race-bar-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .race-bar-name {
+            font-weight: 600;
+        }
+
+        .race-bar-stats {
+            color: #888;
+        }
+
+        .race-bar-track {
+            height: 24px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .race-bar-fill {
+            height: 100%;
+            border-radius: 12px;
+            transition: width 0.3s ease;
+            position: relative;
+        }
+
+        .race-bar-fill.bandit {
+            background: linear-gradient(90deg, #f093fb, #f5576c);
+        }
+
+        .race-bar-fill.single-var {
+            background: linear-gradient(90deg, #4facfe, #00f2fe);
+        }
+
+        .race-bar-fill.explorer {
+            background: linear-gradient(90deg, #43e97b, #38f9d7);
+        }
+
+        .race-bar-fill.winner::after {
+            content: 'WINNER';
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 0.7rem;
+            font-weight: bold;
+            color: rgba(0,0,0,0.5);
+        }
+
+        .race-controls {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .btn {
+            padding: 0.8rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: rgba(255,255,255,0.1);
+            color: #e0e0e0;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        .tick-counter {
+            text-align: center;
+            margin-top: 1rem;
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 2rem 0;
+            color: #666;
+            font-size: 0.85rem;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            margin-top: 3rem;
+        }
+
+        footer a {
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            h1 {
+                font-size: 2.5rem;
+            }
+
+            .strategies {
+                grid-template-columns: 1fr;
+            }
+
+            .pros-cons {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Pluribus</h1>
+            <p class="subtitle">Estrategias de Aprendizado para Descoberta Coletiva</p>
+        </header>
+
+        <section class="strategies">
+            <!-- Bandit Strategy -->
+            <div class="strategy-card bandit">
+                <h3 class="strategy-name">Bandit</h3>
+                <p class="strategy-subtitle">Multi-Armed Bandit por Posicao</p>
+                <p class="strategy-description">
+                    Reforca cada token usado proporcionalmente ao reward recebido.
+                    Simples e rapido, mas trata todas as posicoes igualmente.
+                </p>
+
+                <div class="demo-container">
+                    <div class="demo-title">Probabilidades por Posicao</div>
+                    <div class="bandit-demo" id="banditDemo">
+                        <div class="bandit-bar"><div class="bandit-fill" style="height: 60%"></div></div>
+                        <div class="bandit-bar"><div class="bandit-fill" style="height: 85%"></div></div>
+                        <div class="bandit-bar"><div class="bandit-fill" style="height: 45%"></div></div>
+                        <div class="bandit-bar"><div class="bandit-fill" style="height: 90%"></div></div>
+                        <div class="bandit-bar"><div class="bandit-fill" style="height: 70%"></div></div>
+                        <div class="bandit-bar"><div class="bandit-fill" style="height: 55%"></div></div>
+                        <div class="bandit-bar"><div class="bandit-fill" style="height: 80%"></div></div>
+                        <div class="bandit-bar"><div class="bandit-fill" style="height: 65%"></div></div>
+                    </div>
+                </div>
+
+                <div class="pros-cons">
+                    <div class="pros">
+                        <div class="pros-title">Vantagens</div>
+                        <ul>
+                            <li>Simples de implementar</li>
+                            <li>Convergencia rapida inicial</li>
+                            <li>Baixo custo computacional</li>
+                        </ul>
+                    </div>
+                    <div class="cons">
+                        <div class="cons-title">Desvantagens</div>
+                        <ul>
+                            <li>Fica preso em maximos locais</li>
+                            <li>Nao diferencia posicoes</li>
+                            <li>Reforca erros junto com acertos</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Single Var Strategy -->
+            <div class="strategy-card single-var">
+                <h3 class="strategy-name">Single Var</h3>
+                <p class="strategy-subtitle">Feedback Comparativo</p>
+                <p class="strategy-description">
+                    Compara tentativas consecutivas para inferir quais posicoes estao corretas.
+                    Se mudar uma posicao melhora, a anterior estava errada.
+                </p>
+
+                <div class="demo-container">
+                    <div class="demo-title">Analise Comparativa</div>
+                    <div class="singlevar-demo">
+                        <div class="comparison-row">
+                            <span class="comparison-label">Antes:</span>
+                            <div class="sequence">
+                                <span class="seq-item correct">1</span>
+                                <span class="seq-item correct">3</span>
+                                <span class="seq-item wrong changed">2</span>
+                                <span class="seq-item correct">0</span>
+                                <span class="seq-item correct">1</span>
+                                <span class="seq-item wrong">3</span>
+                                <span class="seq-item correct">0</span>
+                                <span class="seq-item correct">2</span>
+                            </div>
+                            <span class="reward-change reward-down">6/8</span>
+                        </div>
+                        <div class="comparison-row">
+                            <span class="comparison-label"></span>
+                            <span class="arrow">↓</span>
+                        </div>
+                        <div class="comparison-row">
+                            <span class="comparison-label">Depois:</span>
+                            <div class="sequence">
+                                <span class="seq-item correct">1</span>
+                                <span class="seq-item correct">3</span>
+                                <span class="seq-item correct changed">0</span>
+                                <span class="seq-item correct">0</span>
+                                <span class="seq-item correct">1</span>
+                                <span class="seq-item wrong">3</span>
+                                <span class="seq-item correct">0</span>
+                                <span class="seq-item correct">2</span>
+                            </div>
+                            <span class="reward-change reward-up">7/8</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pros-cons">
+                    <div class="pros">
+                        <div class="pros-title">Vantagens</div>
+                        <ul>
+                            <li>Identifica posicoes corretas</li>
+                            <li>Aprende com erros</li>
+                            <li>Mais eficiente que bandit</li>
+                        </ul>
+                    </div>
+                    <div class="cons">
+                        <div class="cons-title">Desvantagens</div>
+                        <ul>
+                            <li>Precisa de historico</li>
+                            <li>Pode confundir com ruido</li>
+                            <li>Mais complexo</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Explorer Strategy -->
+            <div class="strategy-card explorer">
+                <h3 class="strategy-name">Explorer</h3>
+                <p class="strategy-subtitle">Epsilon-Greedy com Decay</p>
+                <p class="strategy-description">
+                    Alta exploracao no inicio, foca depois. Adiciona ruido que
+                    diminui com o tempo, escapando de maximos locais.
+                </p>
+
+                <div class="demo-container">
+                    <div class="demo-title">Exploracao ao Longo do Tempo</div>
+                    <div class="explorer-demo">
+                        <svg class="explorer-path" viewBox="0 0 300 100" preserveAspectRatio="none">
+                            <defs>
+                                <linearGradient id="explorerGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                    <stop offset="0%" style="stop-color:#43e97b;stop-opacity:1" />
+                                    <stop offset="100%" style="stop-color:#38f9d7;stop-opacity:1" />
+                                </linearGradient>
+                            </defs>
+                            <path d="M 0,20 Q 30,60 60,30 T 120,50 T 180,25 T 240,15 T 300,10" />
+                        </svg>
+                        <div class="explorer-line"></div>
+                        <div class="epsilon-indicator">ε → 0</div>
+                    </div>
+                </div>
+
+                <div class="pros-cons">
+                    <div class="pros">
+                        <div class="pros-title">Vantagens</div>
+                        <ul>
+                            <li>Escapa de maximos locais</li>
+                            <li>Balance exploracao/explotacao</li>
+                            <li>Robusto</li>
+                        </ul>
+                    </div>
+                    <div class="cons">
+                        <div class="cons-title">Desvantagens</div>
+                        <ul>
+                            <li>Mais lento no inicio</li>
+                            <li>Parametros a ajustar</li>
+                            <li>Pode explorar demais</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Comparison Table -->
+        <section class="comparison-section">
+            <h2>Comparacao Direta</h2>
+            <table class="comparison-table">
+                <thead>
+                    <tr>
+                        <th>Metrica</th>
+                        <th>Bandit</th>
+                        <th>Single Var</th>
+                        <th>Explorer</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Velocidade Inicial</td>
+                        <td>
+                            <div class="rating">
+                                <span class="rating-dot filled"></span>
+                                <span class="rating-dot filled"></span>
+                                <span class="rating-dot filled"></span>
+                                <span class="rating-dot filled"></span>
+                                <span class="rating-dot filled"></span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="rating">
+                                <span class="rating-dot filled"></span>
+                                <span class="rating-dot filled"></span>
+                                <span class="rating-dot filled"></span>
+                                <span class="rating-dot"></span>
+                                <span class="rating-dot"></span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="rating">
+                                <span class="rating-dot filled"></span>
+                                <span class="rating-dot filled"></span>
+                                <span class="rating-dot"></span>
+                                <span class="rating-dot"></span>
+                                <span class="rating-dot"></span>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Escapar Maximos Locais</td>
+                        <td>
+                            <div class="rating">
+                                <span class="rating-dot filled"></span>
+                                <span class="rating-dot"></span>
+                                <span class="rating-dot"></span>
+                                <span class="rating-dot"></span>
+                                <span class="rating-dot"></span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="rating">
+                                <span class="rating-dot filled"></span>
+                                <span class="rating-dot filled"></span>
+                                <span class="rating-dot filled"></span>
+                                <span class="rating-dot filled"></span>
+                                <span class="rating-dot"></span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="rating">
+                                <span class="rating-dot filled"></span>
+                                <span class="rating-dot filled"></span>
+                                <span class="rating-dot filled"></span>
+                                <span class="rating-dot filled"></span>
+                                <span class="rating-dot filled"></span>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Eficiencia (Custo)</td>
+                        <td>
+                            <div class="rating">
+                                <span class="rating-dot filled"></span>
+                                <span class="rating-dot filled"></span>
+                                <span class="rating-dot"></span>
+                                <span class="rating-dot"></span>
+                                <span class="rating-dot"></span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="rating">
+                                <span class="rating-dot filled"></span>
+                                <span class="rating-dot filled"></span>
+                                <span class="rating-dot filled"></span>
+                                <span class="rating-dot filled"></span>
+                                <span class="rating-dot filled"></span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="rating">
+                                <span class="rating-dot filled"></span>
+                                <span class="rating-dot filled"></span>
+                                <span class="rating-dot filled"></span>
+                                <span class="rating-dot filled"></span>
+                                <span class="rating-dot"></span>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Simplicidade</td>
+                        <td>
+                            <div class="rating">
+                                <span class="rating-dot filled"></span>
+                                <span class="rating-dot filled"></span>
+                                <span class="rating-dot filled"></span>
+                                <span class="rating-dot filled"></span>
+                                <span class="rating-dot filled"></span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="rating">
+                                <span class="rating-dot filled"></span>
+                                <span class="rating-dot filled"></span>
+                                <span class="rating-dot filled"></span>
+                                <span class="rating-dot"></span>
+                                <span class="rating-dot"></span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="rating">
+                                <span class="rating-dot filled"></span>
+                                <span class="rating-dot filled"></span>
+                                <span class="rating-dot filled"></span>
+                                <span class="rating-dot filled"></span>
+                                <span class="rating-dot"></span>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- Interactive Demo -->
+        <section class="interactive-section">
+            <h2>Simulacao Interativa</h2>
+            <p class="interactive-description">
+                Veja como cada estrategia progride na busca pela sequencia correta
+            </p>
+
+            <div class="race-container">
+                <div class="race-bar-container">
+                    <div class="race-bar-label">
+                        <span class="race-bar-name">Bandit</span>
+                        <span class="race-bar-stats" id="banditStats">0/8 - $0</span>
+                    </div>
+                    <div class="race-bar-track">
+                        <div class="race-bar-fill bandit" id="banditBar" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <div class="race-bar-container">
+                    <div class="race-bar-label">
+                        <span class="race-bar-name">Single Var</span>
+                        <span class="race-bar-stats" id="singlevarStats">0/8 - $0</span>
+                    </div>
+                    <div class="race-bar-track">
+                        <div class="race-bar-fill single-var" id="singlevarBar" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <div class="race-bar-container">
+                    <div class="race-bar-label">
+                        <span class="race-bar-name">Explorer</span>
+                        <span class="race-bar-stats" id="explorerStats">0/8 - $0</span>
+                    </div>
+                    <div class="race-bar-track">
+                        <div class="race-bar-fill explorer" id="explorerBar" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <div class="race-controls">
+                    <button class="btn btn-primary" id="startBtn">Iniciar Corrida</button>
+                    <button class="btn btn-secondary" id="resetBtn">Resetar</button>
+                </div>
+
+                <div class="tick-counter" id="tickCounter">Tick: 0</div>
+            </div>
+        </section>
+
+        <!-- Technical Details Section -->
+        <section class="comparison-section" style="margin-top: 3rem;">
+            <h2>📐 Technical Details</h2>
+
+            <div style="background: rgba(0,0,0,0.3); border-radius: 12px; padding: 2rem; margin: 1rem 0;">
+                <h3 style="color: #f093fb; margin-bottom: 1rem;">Bandit Strategy</h3>
+                <p><strong>Update Rule:</strong></p>
+                <pre style="background: rgba(255,255,255,0.05); padding: 1rem; border-radius: 8px; overflow-x: auto;">
+P_new[pos, token] += α * reward
+P_new = normalize(P_new)  # Each row sums to 1
+                </pre>
+                <p><strong>Complexity:</strong> O(L) per update, where L = sequence length</p>
+                <p><strong>Parameters:</strong></p>
+                <ul style="color: #bbb;">
+                    <li><code>α (learning_rate)</code>: 0.05-0.15 recommended. Higher = faster but less stable</li>
+                </ul>
+                <p><strong>When to use:</strong> Quick testing, small search spaces, when speed > quality</p>
+            </div>
+
+            <div style="background: rgba(0,0,0,0.3); border-radius: 12px; padding: 2rem; margin: 1rem 0;">
+                <h3 style="color: #4facfe; margin-bottom: 1rem;">Single Var Strategy</h3>
+                <p><strong>Update Rule:</strong></p>
+                <pre style="background: rgba(255,255,255,0.05); padding: 1rem; border-radius: 8px; overflow-x: auto;">
+# Analyze history to compute confidence[pos]
+for pos in changed_positions:
+    if reward improved: confidence[pos] += 0.1
+    if reward worsened: confidence[pos] -= 0.1
+
+P_new[pos, token] += α * reward * confidence[pos]
+P_new = normalize(P_new)
+                </pre>
+                <p><strong>Complexity:</strong> O(L + H) per update, where H = history size (typically 10)</p>
+                <p><strong>Parameters:</strong></p>
+                <ul style="color: #bbb;">
+                    <li><code>α (learning_rate)</code>: 0.10-0.20 recommended</li>
+                    <li><code>max_history</code>: 5-15 attempts (default: 10)</li>
+                </ul>
+                <p><strong>When to use:</strong> Medium/large search spaces, when you need efficiency, HIVE mode</p>
+            </div>
+
+            <div style="background: rgba(0,0,0,0.3); border-radius: 12px; padding: 2rem; margin: 1rem 0;">
+                <h3 style="color: #43e97b; margin-bottom: 1rem;">Explorer Strategy</h3>
+                <p><strong>Update Rule:</strong></p>
+                <pre style="background: rgba(255,255,255,0.05); padding: 1rem; border-radius: 8px; overflow-x: auto;">
+P_new[pos, token] += α * reward
+noise = uniform(0, ε, shape=P.shape)
+P_new += noise
+
+ε *= decay  # Typically 0.995
+P_new = normalize(P_new)
+                </pre>
+                <p><strong>Complexity:</strong> O(L * M) per update, where M = alphabet size</p>
+                <p><strong>Parameters:</strong></p>
+                <ul style="color: #bbb;">
+                    <li><code>α (learning_rate)</code>: 0.05-0.12 recommended (lower than bandit due to noise)</li>
+                    <li><code>initial_epsilon</code>: 0.2-0.4 (higher = more exploration)</li>
+                    <li><code>decay</code>: 0.990-0.999 (slower decay = longer exploration)</li>
+                </ul>
+                <p><strong>When to use:</strong> Complex landscapes, LOCAL mode, when agents get stuck, long runs</p>
+            </div>
+
+            <div style="background: rgba(102, 126, 234, 0.1); border-left: 4px solid #667eea; padding: 1.5rem; margin-top: 2rem;">
+                <h3 style="color: #667eea; margin-bottom: 1rem;">💡 Practical Guidelines</h3>
+                <ul style="color: #bbb; line-height: 2;">
+                    <li><strong>Start with Bandit</strong> for prototyping and quick tests</li>
+                    <li><strong>Use Single Var</strong> for production HIVE mode (best efficiency/quality tradeoff)</li>
+                    <li><strong>Use Explorer</strong> for LOCAL mode or when diversity is critical</li>
+                    <li><strong>Learning Rate Sweet Spot:</strong> 10-20% (0.10-0.20 in code)</li>
+                    <li><strong>Too high α:</strong> Oscillation, instability</li>
+                    <li><strong>Too low α:</strong> Slow convergence, wasted energy</li>
+                </ul>
+            </div>
+        </section>
+
+        <footer>
+            <p>Pluribus - Simulacao de Mente Coletiva</p>
+            <p>Rode com: <code>python experiments/compare.py --visualize</code></p>
+        </footer>
+    </div>
+
+    <script>
+        // Interactive Race Simulation
+        const strategies = {
+            bandit: {
+                bar: document.getElementById('banditBar'),
+                stats: document.getElementById('banditStats'),
+                progress: 0,
+                spent: 0,
+                maxProgress: 7, // Gets stuck at 7/8
+                speed: 0.8
+            },
+            singlevar: {
+                bar: document.getElementById('singlevarBar'),
+                stats: document.getElementById('singlevarStats'),
+                progress: 0,
+                spent: 0,
+                maxProgress: 8,
+                speed: 0.6
+            },
+            explorer: {
+                bar: document.getElementById('explorerBar'),
+                stats: document.getElementById('explorerStats'),
+                progress: 0,
+                spent: 0,
+                maxProgress: 8,
+                speed: 0.4
+            }
+        };
+
+        let isRunning = false;
+        let tick = 0;
+        let animationId = null;
+        let winner = null;
+
+        function updateDisplay() {
+            for (const [name, strat] of Object.entries(strategies)) {
+                const percent = (strat.progress / 8) * 100;
+                strat.bar.style.width = `${percent}%`;
+                strat.stats.textContent = `${Math.floor(strat.progress)}/8 - $${Math.floor(strat.spent)}`;
+
+                if (strat.progress >= 8 && !strat.bar.classList.contains('winner')) {
+                    strat.bar.classList.add('winner');
+                    if (!winner) winner = name;
+                }
+            }
+            document.getElementById('tickCounter').textContent = `Tick: ${tick}`;
+        }
+
+        function simulate() {
+            if (!isRunning) return;
+
+            tick++;
+
+            for (const [name, strat] of Object.entries(strategies)) {
+                if (strat.progress < strat.maxProgress) {
+                    // Simulate progress with some randomness
+                    let increment = strat.speed * (0.5 + Math.random() * 0.5);
+
+                    // Bandit slows down near max
+                    if (name === 'bandit' && strat.progress > 5) {
+                        increment *= 0.3;
+                    }
+
+                    // Explorer starts slow but catches up
+                    if (name === 'explorer' && tick < 10) {
+                        increment *= 0.5;
+                    } else if (name === 'explorer') {
+                        increment *= 1.2;
+                    }
+
+                    // Single var is consistent
+                    if (name === 'singlevar') {
+                        increment *= 1.1;
+                    }
+
+                    strat.progress = Math.min(strat.maxProgress, strat.progress + increment);
+                    strat.spent += 10;
+                }
+            }
+
+            updateDisplay();
+
+            // Check if all done or stuck
+            const allDone = Object.values(strategies).every(s => s.progress >= 8);
+            const allStuck = tick > 100;
+
+            if (allDone || allStuck) {
+                isRunning = false;
+                document.getElementById('startBtn').textContent = 'Iniciar Corrida';
+            } else {
+                animationId = requestAnimationFrame(() => {
+                    setTimeout(simulate, 50);
+                });
+            }
+        }
+
+        document.getElementById('startBtn').addEventListener('click', () => {
+            if (isRunning) {
+                isRunning = false;
+                document.getElementById('startBtn').textContent = 'Continuar';
+            } else {
+                isRunning = true;
+                document.getElementById('startBtn').textContent = 'Pausar';
+                simulate();
+            }
+        });
+
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            isRunning = false;
+            tick = 0;
+            winner = null;
+
+            for (const strat of Object.values(strategies)) {
+                strat.progress = 0;
+                strat.spent = 0;
+                strat.bar.classList.remove('winner');
+            }
+
+            updateDisplay();
+            document.getElementById('startBtn').textContent = 'Iniciar Corrida';
+        });
+
+        // Animate bandit demo bars
+        function animateBanditBars() {
+            const bars = document.querySelectorAll('.bandit-bar .bandit-fill');
+            bars.forEach(bar => {
+                const currentHeight = parseInt(bar.style.height);
+                const newHeight = currentHeight + (Math.random() - 0.5) * 10;
+                bar.style.height = `${Math.max(20, Math.min(95, newHeight))}%`;
+            });
+        }
+
+        setInterval(animateBanditBars, 1000);
+    </script>
+</body>
+</html>
