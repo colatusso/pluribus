@@ -86,6 +86,7 @@ class SimulationRunner:
             adjacency = create_topology(
                 config.topology_type,
                 config.num_agents,
+                agent_ids=[a.node_id for a in self.agents],
                 k=config.topology_k
             )
             # Atualiza vizinhos dos agentes
