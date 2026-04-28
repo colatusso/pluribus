@@ -7,6 +7,7 @@ Usage:
 import streamlit as st
 import sys
 import os
+from typing import List
 
 # Add src to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -50,6 +51,15 @@ from src.plugins import (
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+
+from arena import (
+    build_arena_figure,
+    build_recipe_strip,
+    extract_events,
+    snapshot_state,
+)
+from run_loop import run_and_render
+import simple_ui
 
 
 def create_plugin_section(category: str, plugins_config: dict) -> list:
@@ -121,7 +131,37 @@ def main():
 
     st.title(f"🧠 {i18n.t('app_title')}")
     st.caption(i18n.t('app_subtitle'))
+
+    # Toggle Simples / Avancado
+    if "ui_mode" not in st.session_state:
+        st.session_state.ui_mode = "simples"
+    ui_mode = st.radio(
+        "Modo da interface",
+        options=["simples", "avancado"],
+        format_func=lambda x: "🪶 Simples" if x == "simples" else "🛠️ Avancado",
+        horizontal=True,
+        index=0 if st.session_state.ui_mode == "simples" else 1,
+        label_visibility="collapsed",
+    )
+    if ui_mode != st.session_state.ui_mode:
+        st.session_state.ui_mode = ui_mode
+        st.rerun()
     st.markdown("---")
+
+    if ui_mode == "simples":
+        config, plugins, opts = simple_ui.render()
+        if opts["run"]:
+            runner = SimulationRunner(config, plugins=plugins)
+            run_and_render(
+                runner,
+                num_ticks=config.num_ticks,
+                sequence_length=config.sequence_length,
+                live_arena=opts["live_arena"],
+                show_progress=True,
+            )
+        return
+
+    # ---- Modo Avancado (UI original) ----
 
     # Sidebar with configuration
     with st.sidebar:
@@ -604,13 +644,17 @@ def main():
     st.markdown("---")
 
     # Botao executar
-    col1, col2 = st.columns([2, 1])
+    col1, col2, col3 = st.columns([2, 1, 1])
 
     with col1:
         run_button = st.button(i18n.t('execute_simulation'), type="primary", use_container_width=True)
 
     with col2:
         show_progress = st.checkbox(i18n.t('show_detailed_progress'), value=True)
+
+    with col3:
+        live_arena = st.checkbox("🎬 Live Arena", value=True,
+                                 help="Visualizacao em tempo real dos agentes + log narrativo")
 
     if run_button:
         # Monta config
@@ -648,13 +692,33 @@ def main():
         # Progress bar
         progress_bar = st.progress(0)
         status_text = st.empty()
-        chart_placeholder = st.empty()
+
+        # Layout dinamico: arena + log lado a lado, ou so o chart classico
+        if live_arena:
+            recipe_placeholder = st.empty()
+            arena_col, log_col = st.columns([3, 2])
+            with arena_col:
+                arena_placeholder = st.empty()
+            with log_col:
+                st.markdown("### 📜 Cronicas")
+                log_placeholder = st.empty()
+            chart_placeholder = st.empty()
+        else:
+            arena_placeholder = None
+            recipe_placeholder = None
+            log_placeholder = None
+            chart_placeholder = st.empty()
 
         # Historico
         history = {"tick": [], "best_match": [], "avg_reward": [], "num_agents": []}
+        narrative: List[str] = []
+        prev_state = None
+        recipe_pattern = runner.world.recipes[0].pattern if runner.world.recipes else []
 
         # Roda simulacao
         found_solution = False
+        RENDER_EVERY = 3 if live_arena else 5
+
         for tick in range(num_ticks):
             found_solution = runner.run_single_tick()
 
@@ -664,20 +728,47 @@ def main():
             history["avg_reward"].append(avg)
             history["num_agents"].append(len(runner.agents))
 
-            if tick % 5 == 0 or found_solution:
+            curr_state = snapshot_state(runner)
+            new_events = extract_events(prev_state, curr_state, tick, sequence_length)
+            if new_events:
+                narrative.extend(new_events)
+                narrative = narrative[-40:]
+            prev_state = curr_state
+
+            if tick % RENDER_EVERY == 0 or found_solution:
                 progress_bar.progress((tick + 1) / num_ticks)
                 status_text.text(
                     f"{i18n.t('tick')} {tick} | {i18n.t('best_match')}: {runner.get_best_match()}/{sequence_length} | "
                     f"{i18n.t('agents')}: {len(runner.agents)} | {i18n.t('spent')}: {runner.get_total_spent():.0f}"
                 )
 
+                if live_arena:
+                    best_seq = None
+                    if runner.agents:
+                        best_seq = max(runner.agents, key=lambda a: a.best_reward).best_sequence
+
+                    recipe_placeholder.plotly_chart(
+                        build_recipe_strip(recipe_pattern, best_seq),
+                        use_container_width=True,
+                        key=f"recipe_{tick}",
+                    )
+                    arena_placeholder.plotly_chart(
+                        build_arena_figure(runner, last_winner_id=curr_state.get("best_id")),
+                        use_container_width=True,
+                        key=f"arena_{tick}",
+                    )
+                    if narrative:
+                        log_placeholder.markdown(
+                            "\n".join(f"- {line}" for line in reversed(narrative))
+                        )
+
                 if show_progress and len(history["tick"]) > 1:
                     df = pd.DataFrame(history)
                     fig = go.Figure()
                     fig.add_trace(go.Scatter(x=df["tick"], y=df["best_match"], name=i18n.t('best_match'), line=dict(color="#00ff00", width=2)))
                     fig.add_trace(go.Scatter(x=df["tick"], y=df["avg_reward"], name=i18n.t('avg_reward'), line=dict(color="#ffaa00", width=1, dash="dot")))
-                    fig.update_layout(title=i18n.t('progress'), xaxis_title=i18n.t('tick'), yaxis_title="Score", template="plotly_dark", height=300)
-                    chart_placeholder.plotly_chart(fig, use_container_width=True)
+                    fig.update_layout(title=i18n.t('progress'), xaxis_title=i18n.t('tick'), yaxis_title="Score", template="plotly_dark", height=260)
+                    chart_placeholder.plotly_chart(fig, use_container_width=True, key=f"chart_{tick}")
 
             if found_solution or not runner.agents:
                 break
